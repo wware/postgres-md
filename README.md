@@ -1,4 +1,10 @@
-# Documenting PostgreSQL schemas in Markdown
+# Getting smarter with PostgreSQL
+
+Originally I intended this project to be a means to document a schema using Markdown. I'd like to expand the scope to also include recording some [best practices](http://c2.com/cgi/wiki?DatabaseBestPractices) for schema design and general database usage, some thoughts on incrementally improving an entrenched bad schema design, and some ideas on how one might unit-test a database design (including table layout, queries, views, functions, and triggers). My quick guess is that fixing a bad design incrementally is probably a matter of identifying a collection of mutually orthogonal bugs, for which patches to the schema and the application code can be created, along with data migration scripts, and tested thoroughly before they are moved to production. (Here are [more thoughts](http://c2.com/cgi/wiki?ContinuousDatabaseRefactoring) on schema changes, which I have glanced at but not studied yet.)
+
+I have some thoughts on unit testing, based on the needs of my current job. We are building an automated test framework using [pytest](http://pytest.org/latest/) and we usually talk to our DB using [SQLAlchemy](http://www.sqlalchemy.org/). I observe that Docker has [PostgreSQL image](https://registry.hub.docker.com/_/postgres/) available, and like all Docker images, you can probably instantiate it very fast. My thought is that the unit test setup function should bring up a Docker Postgres instance and populate it with the intended schema. The teardown function should kill the instance, so that each test is running with a fresh empty database. Each test is responsible for populating the DB with any data required, and then it runs whatever functions or selects or whatnot and confirms the answer is correct. The setup and teardown functions and the tests will be written in Python using SQLAlchemy.
+
+## Documenting schemas
 
 > Show me your flowchart and conceal your tables, and I shall continue to be mystified.
 > Show me your tables, and I won't usually need your flowchart; it'll be obvious.
@@ -8,11 +14,11 @@ This is hopefully going to be a useful way to add commentary to a PostgreSQL sch
 
 As I look at it, there isn't a lot here that is terribly PostgreSQL-specific. It should be possible to pretty easily adapt it to MySQL, Oracle, or other RDBMSes.
 
-## Identifying SQL objects in the schema
+### Identifying SQL objects in the schema
 
 Using the schema in `schema.sql` as an example, here is how SQL objects are referenced.
 
-### Tables
+#### Tables
 
     ## command_set
 
@@ -20,13 +26,13 @@ Because it matches the name of a table in the schema and is a "##" level heading
 
     Now I will talk about the [command_set table](#command_set).
 
-### Columns
+#### Columns
 
     ### command_set:command_set_type
 
 This is a reference to a column, the `command_set_type` column in the `command_set` table.Likewise, the following Markdown text would describe it in whatever way is helpful.
 
-### Functions
+#### Functions
 
 There aren't any functions in this schema, but if there were, they would be indentified
 like this.
@@ -40,11 +46,11 @@ which they appear in the schema.
 
 Tables and functions will become sections and columns will become subsections.
 
-## Adding additional sections and subsections
+### Adding additional sections and subsections
 
 This can be done in the conventional way using "##" and "###" at the beginning of the line. As long as these don't match objects found in the schema, they will be treated as additional sections, and will be placed after all the database stuff.
 
-## Basic workflow
+### Basic workflow
 
 ```bash
 pip install markdown
@@ -56,7 +62,7 @@ python this_script.py schema.sql commentary.md > schema_doc.md
 python -m markdown -x gfm schema_doc.md > README.html
 ```
 
-## Named anchors
+### Named anchors
 
 These aren't part of this project, they are a standard feature of Markdown, but so useful that they're worthy of mention here.
 
@@ -79,6 +85,6 @@ Content for chapter two.
 Content for chapter three.
 ```
 
-## Table of contents? Index?
+### Table of contents? Index?
 
 It might be good to automatically generate these things. I'll think about that.
