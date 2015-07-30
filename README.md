@@ -2,7 +2,50 @@
 
 Originally I intended this project to be a means to document a schema using Markdown. I'd like to expand the scope to also include recording some [best practices](http://c2.com/cgi/wiki?DatabaseBestPractices) for schema design and general database usage, some thoughts on incrementally improving an entrenched bad schema design, and some ideas on how one might unit-test a database design (including table layout, queries, views, functions, and triggers). My quick guess is that fixing a bad design incrementally is probably a matter of identifying a collection of mutually orthogonal bugs, for which patches to the schema and the application code can be created, along with data migration scripts, and tested thoroughly before they are moved to production. (Here are [more thoughts](http://c2.com/cgi/wiki?ContinuousDatabaseRefactoring) on schema changes, which I have glanced at but not studied yet.)
 
-I have some thoughts on unit testing, based on the needs of my current job. We are building an automated test framework using [pytest](http://pytest.org/latest/) and we usually talk to our DB using [SQLAlchemy](http://www.sqlalchemy.org/). I observe that Docker has [PostgreSQL image](https://registry.hub.docker.com/_/postgres/) available, and like all Docker images, you can probably instantiate it very fast. My thought is that the unit test setup function should bring up a Docker Postgres instance and populate it with the intended schema. The teardown function should kill the instance, so that each test is running with a fresh empty database. Each test is responsible for populating the DB with any data required, and then it runs whatever functions or selects or whatnot and confirms the answer is correct. The setup and teardown functions and the tests will be written in Python using SQLAlchemy.
+I have some thoughts on unit testing, based on the needs of my current job. We are building an automated test framework using [pytest](http://pytest.org/latest/) and we usually talk to our DB using [SQLAlchemy](http://www.sqlalchemy.org/). I observe that Docker has a [PostgreSQL image](https://registry.hub.docker.com/_/postgres/) available, and like all Docker images, you can probably instantiate it very fast. My thought is that the unit test setup function should bring up a Docker Postgres instance and populate it with the intended schema. The teardown function should kill the instance, so that each test is running with a fresh empty database. Each test is responsible for populating the DB with any data required, and then it runs whatever functions or selects or whatnot and confirms the answer is correct. The setup and teardown functions and the tests will be written in Python using SQLAlchemy.
+
+## Testing SQL
+
+Here are some relevant links that I need to spend more time with, picking out what's good and what's meh.
+
+* [Best way to test SQL queries - Stack Overflow](http://stackoverflow.com/questions/754527/best-way-to-test-sql-queries)
+* [How to do database unit testing? - StackOverflow](http://stackoverflow.com/questions/3772093/how-to-do-database-unit-testing)
+* [Close Those Loopholes: Lessons learned from Unit Testing T-SQL](https://www.simple-talk.com/sql/database-administration/close-those-loopholes-lessons-learned-from-unit-testing-t-sql/)
+* [Unit testing of stored procedures - Database Administrators Stack Exchange](http://dba.stackexchange.com/questions/21065/unit-testing-of-stored-procedures)
+* [How to unit test databases](http://blog.pluralsight.com/how-to-unit-test-databases)
+* [What are the best practices for testing long SQL queries? - Quora](http://www.quora.com/What-are-the-best-practices-for-testing-long-SQL-queries)
+
+### Avoid IP address space conflict with AWS
+
+If there is no danger of IP address space collision with AWS instances, skip this section.
+
+Docker wants to use a 172.17.x.x address space, and this bumps into the 172.16.x.x address space used by AWS. So we need to fiddle around with the Docker daemon to make things work.
+
+Find the docker daemon process on your machine and kill it. Now do this as root.
+```bash
+ip link set docker0 down
+apt-get install bridge-utils
+brctl delbr docker0
+```
+Finally, restart the daemon with an IP address space that won't bother AWS.
+```bash
+docker -d --bip 192.168.0.1/16
+```
+This allows you to painlessly talk to AWS servers while Docker is running.
+
+### Docker client stuff to run the test
+
+First make sure you've installed [docker-py](https://docker-py.readthedocs.org/en/latest/) and pulled the Docker Postgres image. More info about the Postgres image [here](https://docs.docker.com/examples/postgresql_service/).
+```bash
+docker pull postgres
+sudo pip install docker-py
+```
+
+An example unit test appears in `test_this.py`. When you finish running your unit tests, you can blow away all Docker containers with this command.
+```bash
+docker rm -f $(docker ps -a | tail --lines=+2 | cut -c -8)
+```
+NOTE, this will also blow away any Docker containers *not* involved in your testing. Use caution.
 
 ## Documenting schemas
 
