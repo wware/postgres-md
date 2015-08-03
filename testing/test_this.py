@@ -1,25 +1,14 @@
 import time
-from sqlalchemy import Table, MetaData
 
-from helper import create_engine, url, engine, set_schema
+from helper import engine, set_schema, get_table
 
 set_schema("./example_schema.sql")
 
 
-def get_table():
-    "import table info from the database"
-    db = create_engine(url)
-    metadata = MetaData(db)
-    users = Table('users', metadata, autoload=True, autoload_with=db)
-    assert ([c.name for c in users.columns] ==
-        ['id', 'name', 'age', 'password'])
-    return users
+class TestExampleSchema:
 
-
-class TestMyStuff:
-
-    def test_example(self, engine, url=url):
-        users = get_table()
+    def test_example(self, engine):
+        users = get_table('users', columns=['id', 'name', 'age', 'password'])
         start = time.time()
         i = users.insert()
         i.execute(name='Mary', age=30, password='secret')
@@ -47,12 +36,12 @@ class TestMyStuff:
         test_time = time.time() - start
         assert test_time < 0.1, test_time
 
-    def test_example_2(self, engine, url=url):
+    def test_example_2(self, engine):
         """
         Confirm that we get a fresh database each time.
         No rows from the previous test should appear here.
         """
-        users = get_table()
+        users = get_table('users')
         i = users.insert()
         i.execute(name='Margo', age=29, password='broccoli')
 

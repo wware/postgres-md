@@ -2,7 +2,7 @@ from docker import Client
 import os
 import pytest
 import time
-from sqlalchemy import create_engine
+from sqlalchemy import Table, MetaData, create_engine
 from sqlalchemy_utils.functions import (
     database_exists,
     create_database,
@@ -30,6 +30,16 @@ _schema = None
 def set_schema(fname):
     global _schema
     _schema = fname
+
+
+def get_table(tname, columns=None):
+    "import table info from the database"
+    db = create_engine(url)
+    metadata = MetaData(db)
+    table = Table(tname, metadata, autoload=True, autoload_with=db)
+    if columns is not None:
+        assert [c.name for c in table.columns] == columns
+    return table
 
 
 @pytest.fixture
